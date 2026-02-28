@@ -213,9 +213,9 @@ func (sc StratifiedCompute) DetermineValidLocationsQuickly(iomanager cc.IOManage
 	var wg sync.WaitGroup
 	stormCount := len(sc.GridFile.Events)
 	// TODO: Remove limit after testing
-	if stormCount > 40 {
-		stormCount = 40 // Limit to 40 storms for testing
-	}
+	// if stormCount > 40 {
+	// 	stormCount = 40 // Limit to 40 storms for testing
+	// }
 	fmt.Printf("Starting processing of %d storms with up to 14 in parallel...\n", stormCount)
 	startTime := time.Now()
 	for i := 0; i < stormCount; i++ { //num, storm := range sc.GridFile.Events {

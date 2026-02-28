@@ -59,6 +59,9 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	if err != nil {
 		return err
 	}
+	if len(stormList) == 0 {
+		return fmt.Errorf("no storms found at store: %s, directory: %s, pattern: *.dss", stormsStoreKey, stormDirectory)
+	}
 	//if i wanted to bootstrap, i could bootstrap the storm list now...
 
 	///use fishnets to figure out placements - select from list of valid placements. fishnets are currently expected to be unique to each storm... could be converted to be unique to each storm type.
@@ -144,32 +147,31 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 					if len(calibrationEventNames) > 0 {
 						calibrationEvent = calibrationEventNames[enRng.Intn(len(calibrationEventNames))]
 					}
-				//fetch fishnet based on storm name -
-				sname := strings.Split(stormName, ".")[0]
-				sname = strings.Replace(sname, "st", "ST", -1) //how did this happen?//storm name just file name no extension.
-				if fishnettypeorname == "type" {
-					// For type-based lookup, find any fishnet matching the storm type
-					stormTypeUpper := strings.Replace(stormType, "st", "ST", -1)
-					found := false
-					for key := range fishnets {
-						// Check if key contains the storm type pattern (e.g., _ST1_)
-						if strings.Contains(key, "_"+stormTypeUpper+"_") {
-							sname = key
-							found = true
-							break
+					//fetch fishnet based on storm name -
+					sname := strings.Split(stormName, ".")[0]
+					sname = strings.Replace(sname, "st", "ST", -1) //how did this happen?//storm name just file name no extension.
+					if fishnettypeorname == "type" {
+						// For type-based lookup, find any fishnet matching the storm type
+						stormTypeUpper := strings.Replace(stormType, "st", "ST", -1)
+						found := false
+						for key := range fishnets {
+							// Check if key contains the storm type pattern (e.g., _ST1_)
+							if strings.Contains(key, "_"+stormTypeUpper+"_") {
+								sname = key
+								found = true
+								break
+							}
 						}
+						if !found {
+							return results, fmt.Errorf("could not find fishnet with type %v in fishnet map", stormTypeUpper)
+						}
+					} else if fishnettypeorname != "name" {
+						sname = fishnettypeorname //if not type or name, just use whatever they give directly.
 					}
-					if !found {
-						return results, fmt.Errorf("could not find fishnet with type %v in fishnet map", stormTypeUpper)
+					fishnet, ok := fishnets[sname]
+					if !ok {
+						return results, fmt.Errorf("could not find fishnet %v in fishnet map", sname)
 					}
-				} else if fishnettypeorname != "name" {
-					sname = fishnettypeorname //if not type or name, just use whatever they give directly.
-				}
-				fishnet, ok := fishnets[sname]
-				if !ok {
-
-					return results, fmt.Errorf("could not find fishnet %v in fishnet map", sname)
-				}
 					//sample location
 					coordinate := fishnet.Coordinates[enRng.Intn(len(fishnet.Coordinates))]
 					//fetch seasonal distribution based on storm type
@@ -221,7 +223,6 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 					results = append(results, event)
 				}
 			}
-
 		}
 	}
 	return results, nil
