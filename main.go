@@ -24,19 +24,15 @@ var pluginName string = "hms-mutator"
 const WORKING_DIRECTORY string = "/data"
 
 func main() {
-	fmt.Println("DEBUG: main() starting")
 	err := run()
-	fmt.Printf("DEBUG: run() returned: %v\n", err)
 	if err != nil {
-		fmt.Println("DEBUG: error detected, exiting with code 1")
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println("DEBUG: no error, exiting normally with code 0")
 }
 
 func run() error {
-	fmt.Println("starting the hms-mutator")
+	// fmt.Println("starting the hms-mutator")
 	//register tiledb
 	cc.DataStoreTypeRegistry.Register("TILEDB", tiledb.TileDbEventStore{})
 	pm, err := cc.InitPluginManager()
