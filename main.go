@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -338,8 +339,8 @@ func main() {
 	}
 	if err != nil {
 		fmt.Println(err.Error())
-		pm.Logger.Error("could not compute payload")
-		return
+		// pm.Logger.Error("could not compute payload")
+		os.Exit(1)
 	} else {
 		pm.Logger.Info("complete 100 percent")
 	}
