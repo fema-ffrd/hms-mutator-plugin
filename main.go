@@ -24,10 +24,15 @@ var pluginName string = "hms-mutator"
 const WORKING_DIRECTORY string = "/data"
 
 func main() {
-	if err := run(); err != nil {
+	fmt.Println("DEBUG: main() starting")
+	err := run()
+	fmt.Printf("DEBUG: run() returned: %v\n", err)
+	if err != nil {
+		fmt.Println("DEBUG: error detected, exiting with code 1")
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	fmt.Println("DEBUG: no error, exiting normally with code 0")
 }
 
 func run() error {
@@ -201,7 +206,11 @@ func run() error {
 				pm.Logger.Error("could not put stratified locations for this payload")
 				return err
 			}
-			utils.PutFile(output.CandiateLocations.ToBytes(), pm.IOManager, locations, "default")
+			err = utils.PutFile(output.CandiateLocations.ToBytes(), pm.IOManager, locations, "default")
+			if err != nil {
+				pm.Logger.Error("could not put stratified locations file")
+				return err
+			}
 			gridFileOutput, err := pm.GetOutputDataSource("GridFile")
 			if err != nil {
 				pm.Logger.Error("could not put gridfiles for this payload")
@@ -210,7 +219,11 @@ func run() error {
 			root := path.Dir(gridFileOutput.Paths["default"])
 			for k, v := range output.GridFiles {
 				gridFileOutput.Paths["default"] = fmt.Sprintf("%v/%v.grid", root, k)
-				utils.PutFile(v, pm.IOManager, gridFileOutput, "default")
+				err = utils.PutFile(v, pm.IOManager, gridFileOutput, "default")
+				if err != nil {
+					pm.Logger.Error("could not put grid file: " + k)
+					return err
+				}
 			}
 		case "valid_stratified_locations": //aka fishnets
 			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
@@ -268,7 +281,11 @@ func run() error {
 			for i, _ := range output.AllStormsAllLocations {
 				outbytes = append(outbytes, fmt.Sprintf("%v,%v,%v,%v\n", output.AllStormsAllLocations[indexes[i]].StormName, output.AllStormsAllLocations[indexes[i]].Coordinate.X, output.AllStormsAllLocations[indexes[i]].Coordinate.Y, output.AllStormsAllLocations[indexes[i]].IsValid)...)
 			}
-			utils.PutFile(outbytes, pm.IOManager, outputDataSource, "default")
+			err = utils.PutFile(outbytes, pm.IOManager, outputDataSource, "default")
+			if err != nil {
+				pm.Logger.Error("could not put valid locations file")
+				return err
+			}
 		case "storm_typed_normal_density_locations": //aka fishnets
 			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
 			if err != nil {
