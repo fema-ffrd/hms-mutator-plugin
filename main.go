@@ -24,14 +24,19 @@ var pluginName string = "hms-mutator"
 const WORKING_DIRECTORY string = "/data"
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
 
+func run() error {
 	fmt.Println("starting the hms-mutator")
 	//register tiledb
 	cc.DataStoreTypeRegistry.Register("TILEDB", tiledb.TileDbEventStore{})
 	pm, err := cc.InitPluginManager()
 	if err != nil {
-		fmt.Printf("could not initiate plugin manager: %v\n", err)
-		return
+		return fmt.Errorf("could not initiate plugin manager: %v", err)
 	}
 	// get the payload.
 	payload := pm.Payload
@@ -42,62 +47,62 @@ func main() {
 			seedSet, err := getSeeds(payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			basinDS, err := pm.GetInputDataSource("Input_Basin_Directory")
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			outBasinDS, err := pm.GetOutputDataSource("Output_Basin_Directory")
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			srb := actions.InitSelectBasinAction(a, seedSet, basinDS, outBasinDS)
 
 			controlStartTime, err = srb.Compute()
 
 			if err != nil {
-				return
+				return err
 			}
 
 		case "single_stochastic_transposition":
 			seedSet, err := getSeeds(payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			metFileBytes, err := getInputBytes("HMS Model", ".met", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 
 			transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			gridFile, err := hms.ReadGrid(gridFileBytes)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			metFile, err := hms.ReadMet(metFileBytes)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 
 			sst := actions.InitSingleStochasticTransposition(pm, gridFile, metFile, seedSet, transpositionDomainBytes, watershedDomainBytes)
@@ -105,29 +110,29 @@ func main() {
 			bootstrapCatalog, err := strconv.ParseBool(bootstrapCatalogString)
 			if err != nil {
 				pm.Logger.Error("could not parse bootstrap_catalog parameter")
-				return
+				return err
 			}
 			bootstrapCatalogLength := a.Attributes.GetIntOrDefault("bootstrap_catalog_length", len(gridFile.Events))
 			if len(gridFile.Events) < bootstrapCatalogLength {
 				pm.Logger.Error("cannot allow bootstrap_catalog_length to be greater than the catalog length")
-				return
+				return errors.New("bootstrap_catalog_length too large")
 			}
 			normalizeTimeShiftString := a.Attributes.GetStringOrDefault("normalize", "true")
 			normalizeTimeShift, err := strconv.ParseBool(normalizeTimeShiftString)
 			userSpecifiedOffset := a.Attributes.GetIntOrDefault("start_time_offset", 0)
 			if err != nil {
 				pm.Logger.Error("could not parse normalize parameter")
-				return
+				return err
 			}
 			output, err := sst.Compute(bootstrapCatalog, bootstrapCatalogLength, normalizeTimeShift, controlStartTime, userSpecifiedOffset)
 			if err != nil {
 				pm.Logger.Error("could not compute payload")
-				return
+				return err
 			}
 			dssGridCacheDataSource, err := pm.GetInputDataSource("DSS Grid Cache")
 			if err != nil {
 				pm.Logger.Error("could not find DSS Grid Cache datasource")
-				return
+				return err
 			}
 			root := dssGridCacheDataSource.Paths["default"]
 			stormName := strings.Replace(output.StormName, "\\", "/", -1)
@@ -140,67 +145,67 @@ func main() {
 			dssBytes, err := utils.GetFile(*pm, stormDataSource, "default")
 			if err != nil {
 				pm.Logger.Error("could not find storm")
-				return
+				return err
 			}
 			err = putOutputBytes(dssBytes, "Storm DSS File", payload, pm)
 			if err != nil {
 				pm.Logger.Error("could not put storm")
-				return
+				return err
 			}
 			err = putOutputBytes(output.GridBytes, "Grid File", payload, pm)
 			if err != nil {
 				pm.Logger.Error("could not put grid file")
-				return
+				return err
 			}
 			err = putOutputBytes(output.MetBytes, "Met File", payload, pm)
 			if err != nil {
 				pm.Logger.Error("could not put grid file")
-				return
+				return err
 			}
 		case "stratified_locations":
 			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 
 			transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			gridFile, err := hms.ReadGrid(gridFileBytes)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			sla, err := actions.InitStratifiedCompute(a, gridFile, transpositionDomainBytes, watershedDomainBytes) //, payload.Outputs[0])
 			if err != nil {
 				pm.Logger.Error("could not initalize stratified locations for this payload")
-				return
+				return err
 			}
 			output, err := sla.Compute()
 			//put the output
 
 			if err != nil {
 				pm.Logger.Error("could not compute stratified locations for this payload")
-				return
+				return err
 			}
 			locations, err := pm.GetOutputDataSource("Locations")
 			if err != nil {
 				pm.Logger.Error("could not put stratified locations for this payload")
-				return
+				return err
 			}
 			utils.PutFile(output.CandiateLocations.ToBytes(), pm.IOManager, locations, "default")
 			gridFileOutput, err := pm.GetOutputDataSource("GridFile")
 			if err != nil {
 				pm.Logger.Error("could not put gridfiles for this payload")
-				return
+				return err
 			}
 			root := path.Dir(gridFileOutput.Paths["default"])
 			for k, v := range output.GridFiles {
@@ -211,39 +216,40 @@ func main() {
 			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 
 			transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			gridFile, err := hms.ReadGrid(gridFileBytes)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			sla, err := actions.InitStratifiedCompute(a, gridFile, transpositionDomainBytes, watershedDomainBytes) //, payload.Outputs[0])
 			if err != nil {
 				pm.Logger.Error("could not initalize valid stratified locations for this payload")
-				return
+				return err
 			}
 			//inputSource, err := pm.GetInputDataSource("Cumulative Grids")
 			outputDataSource, err := a.GetOutputDataSource("ValidLocations")
 			if err != nil {
 				pm.Logger.Error("could not put valid stratified locations for this payload")
+				return err
 			}
 			root := outputDataSource.Paths["default"]
 			output, err := sla.DetermineValidLocationsQuickly(pm.IOManager) //sla.DetermineValidLocations(inputSource) //update to be based on output location?
 			if err != nil {
 				pm.Logger.Error("could not compute valid stratified locations for this payload")
-				return
+				return err
 			}
 
 			outputDataSource.Paths["default"] = fmt.Sprintf("%v/%v.csv", root, "AllStormsAllLocations")
@@ -267,65 +273,65 @@ func main() {
 			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 
 			transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			gridFile, err := hms.ReadGrid(gridFileBytes)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			sla, err := actions.InitStratifiedCompute(a, gridFile, transpositionDomainBytes, watershedDomainBytes) //, payload.Outputs[0])
 			if err != nil {
 				pm.Logger.Error("could not initalize locations for this payload")
-				return
+				return err
 			}
 			err = sla.DetermineStormTypeNormalDensityKernelLocations(a.IOManager) //sla.DetermineValidLocations(inputSource) //update to be based on output location?
 			if err != nil {
 				pm.Logger.Error("could not compute locations for this payload")
-				return
+				return err
 			}
 		case "normal_density_locations": //aka fishnets
 			gridFileBytes, err := getInputBytes("HMS Model", ".grid", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 
 			transpositionDomainBytes, err := getInputBytes("TranspositionRegion", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			watershedDomainBytes, err := getInputBytes("WatershedBoundary", "", payload, pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			gridFile, err := hms.ReadGrid(gridFileBytes)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 			sla, err := actions.InitStratifiedCompute(a, gridFile, transpositionDomainBytes, watershedDomainBytes) //, payload.Outputs[0])
 			if err != nil {
 				pm.Logger.Error("could not initalize locations for this payload")
-				return
+				return err
 			}
 			err = sla.DetermineNormalDensityKernelLocations(a.IOManager) //sla.DetermineValidLocations(inputSource) //update to be based on output location?
 			if err != nil {
 				pm.Logger.Error("could not compute locations for this payload")
-				return
+				return err
 			}
 
 		case "full_simulation_sst":
@@ -333,17 +339,13 @@ func main() {
 			err = sst.Compute(pm)
 			if err != nil {
 				pm.Logger.Error(err.Error())
-				return
+				return err
 			}
 		}
 	}
-	if err != nil {
-		fmt.Println(err.Error())
-		// pm.Logger.Error("could not compute payload")
-		os.Exit(1)
-	} else {
-		pm.Logger.Info("complete 100 percent")
-	}
+
+	pm.Logger.Info("complete 100 percent")
+	return nil
 }
 
 func getInputBytes(keyword string, extension string, payload cc.Payload, pm *cc.PluginManager) ([]byte, error) {
