@@ -1,9 +1,4 @@
-FROM golang:1.23.9 as builder
-
-ARG TARGETARCH
-
-ENV GOROOT=/go
-ENV GOPATH=/src/go
+FROM golang:1.23.9 AS builder
 
 RUN apt update &&\
 	  apt -y install gdal-bin gdal-data libgdal-dev
@@ -12,8 +7,7 @@ COPY . /src
 
 WORKDIR /src
 
-#RUN go build -o hms-mutator
-RUN make build
+RUN go build -o hms-mutator
 
 #-------------
 
