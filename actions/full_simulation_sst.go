@@ -23,7 +23,7 @@ This action will generate a full realization sized set of storms, placements, an
 6. sample year uniformly (should be based on a start and end date of the por, making sure the date is contained.)
 7. sample calibration event id (should be 1-6 options.)
 8. get basin file name (should be `44*6*365` combinations.)
-9. store in tiledb database or dump to csv
+9. store results in CSV format
 */
 type FullSimulationSST struct {
 	action cc.Action
@@ -122,12 +122,8 @@ func (frsst *FullSimulationSST) Compute(pm *cc.PluginManager) error {
 	if err != nil {
 		return err
 	}
-	//write results to data stores
-	if outputDataSource.StoreName == "store" {
-		return writeResultsToTileDB(pm, outputDataSource.StoreName, results, outputDataSource.Name) //update this to not referenceblock store, and also not hardcode the name to "storms"
-	} else {
-		return writeResultsToCSV(a.IOManager, outputDataSource, results)
-	}
+	//write results to CSV
+	return writeResultsToCSV(a.IOManager, outputDataSource, results)
 
 }
 func compute(stormNames []string, calibrationEventNames []string, basinRootDir string, basinName string, fishnets utils.FishNetMap, fishnettypeorname string, seasonalDistributions utils.StormTypeSeasonalityDistributionMap, porStart time.Time, porEnd time.Time, seeds []utils.SeedSet, blocks []utils.Block) (FullSimulationResult, error) {
@@ -226,17 +222,6 @@ func compute(stormNames []string, calibrationEventNames []string, basinRootDir s
 		}
 	}
 	return results, nil
-}
-func writeResultsToTileDB(pm *cc.PluginManager, storeKey string, results FullSimulationResult, tableName string) error {
-	recordset, err := cc.NewEventStoreRecordset(pm, &results, storeKey, tableName)
-	if err != nil {
-		return err
-	}
-	err = recordset.Create()
-	if err != nil {
-		return err
-	}
-	return recordset.Write(&results)
 }
 func writeResultsToCSV(iomanager cc.IOManager, ds cc.DataSource, results FullSimulationResult) error {
 	//create a header

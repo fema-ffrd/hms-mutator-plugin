@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/fema-ffrd/cc-go-sdk"
-	tiledb "github.com/fema-ffrd/cc-go-sdk/tiledb-store"
 	"github.com/fema-ffrd/hms-mutator/actions"
 	"github.com/fema-ffrd/hms-mutator/hms"
 	"github.com/fema-ffrd/hms-mutator/utils"
@@ -33,8 +32,6 @@ func main() {
 
 func run() error {
 	// fmt.Println("starting the hms-mutator")
-	//register tiledb
-	cc.DataStoreTypeRegistry.Register("TILEDB", tiledb.TileDbEventStore{})
 	pm, err := cc.InitPluginManager()
 	if err != nil {
 		return fmt.Errorf("could not initiate plugin manager: %v", err)
